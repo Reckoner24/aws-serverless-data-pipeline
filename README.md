@@ -34,6 +34,14 @@ flowchart LR
 
 The output lands as one CSV at `s3://<bucket>/processed/silver_crew_data_<timestamp>.csv`, reusing the bronze timestamp so any silver file traces back to the exact payload it came from.
 
+## Design notes
+
+**No Python UDFs.** Every transformation is a native Spark column expression (`regexp_extract`, `when`, `round`, `cast`). A Python UDF would serialize each row to a Python worker and back, and Catalyst cannot see inside it to optimize or push down. On this dataset it would not matter; on a real one it is the difference between a job that scales and one that does not.
+
+**Bronze stays untouched.** The Lambda writes the API response verbatim. Parsing only happens in the silver layer, so a change in business rules is a re-run of the transform rather than a re-fetch from the source.
+
+**Traceable output.** The silver file reuses the bronze timestamp, so any CSV points back to the exact payload it came from.
+
 ## Orchestration
 
 Two options are worked out in [docs/PIPELINE.es.md](docs/PIPELINE.es.md), with the trade-offs compared side by side:
